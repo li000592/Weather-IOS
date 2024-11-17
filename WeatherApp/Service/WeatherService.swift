@@ -5,24 +5,15 @@
 
 import Foundation
 
-struct WeatherResponse: Codable {
-    let main: Main
-    let weather: [Weather]
-    let name: String
-}
-
-struct Main: Codable {
-    let temp: Double
-    let humidity: Int
-}
-
-struct Weather: Codable {
-    let description: String
-    let icon: String
-}
-
 class WeatherService {
-    private let apiKey = "YOUR_API_KEY" // Replace with your actual API key
+    private var apiKey: String {
+        guard let path = Bundle.main.path(forResource: "Secrets", ofType: "plist"),
+              let dict = NSDictionary(contentsOfFile: path),
+              let key = dict["API_KEY"] as? String else {
+            fatalError("API Key not found. Please ensure Secrets.plist is configured correctly.")
+        }
+        return key
+    }
 
     func fetchWeather(city: String, completion: @escaping (WeatherResponse?) -> Void) {
         let encodedCity = city.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? city
@@ -46,22 +37,28 @@ class WeatherService {
     }
 
     private func performRequest(with url: URL, completion: @escaping (WeatherResponse?) -> Void) {
-        URLSession.shared.dataTask(with: url) { data, response, error in
+        let task = URLSession.shared.dataTask(with: url) { data, response, error in
             if let error = error {
                 print("Error fetching data: \(error.localizedDescription)")
-                completion(nil)
+                DispatchQueue.main.async {
+                    completion(nil)
+                }
                 return
             }
 
-            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+            if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
                 print("Error: HTTP status code \(httpResponse.statusCode)")
-                completion(nil)
+                DispatchQueue.main.async {
+                    completion(nil)
+                }
                 return
             }
 
             guard let data = data else {
                 print("Error: No data received")
-                completion(nil)
+                DispatchQueue.main.async {
+                    completion(nil)
+                }
                 return
             }
 
@@ -76,6 +73,7 @@ class WeatherService {
                     completion(nil)
                 }
             }
-        }.resume()
+        }
+        task.resume()
     }
 }

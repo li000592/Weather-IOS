@@ -17,7 +17,7 @@ struct HeaderView: View {
                 .frame(width: 40, height: 40)
                 .padding(.leading)
 
-            Text("Weather App")
+            Text("Weather")
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .padding(.leading, 10)

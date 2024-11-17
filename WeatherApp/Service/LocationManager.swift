@@ -1,22 +1,10 @@
-//
-//  LocationManager.swift
-//  WeatherApp
-//
-//  Created by Haorong Li on 2024-11-16.
-//
-
-//
-//  LocationManager.swift
-//  WeatherApp
-//
-
-import Foundation
 import CoreLocation
+import Combine
 
 class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     @Published var location: CLLocation?
-    @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    @Published var errorMessage: String? // Define errorMessage as @Published
 
     override init() {
         super.init()
@@ -29,15 +17,11 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         manager.requestLocation()
     }
 
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        authorizationStatus = status
-    }
-
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        location = locations.first
+        self.location = locations.first
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Failed to find user's location: \(error.localizedDescription)")
+        errorMessage = error.localizedDescription // Update errorMessage
     }
 }

@@ -2,83 +2,101 @@
 //  ContentView.swift
 //  WeatherApp
 //
-//  Created by Haorong Li on 2024-11-16.
-//
-//
-//  ContentView.swift
-//  WeatherApp
-//
 
 import SwiftUI
-import CoreLocation
 
 struct ContentView: View {
-    @State private var city: String = ""
+    @State private var city: String = "" // User input for city
     @State private var weather: WeatherResponse?
-    @StateObject private var locationManager = LocationManager() // Add LocationManager instance
+    @State private var errorMessage: String? // Holds error messages for display
+    @StateObject private var locationManager = LocationManager() // Instance of LocationManager
+    @State private var isLoading: Bool = false // State to track loading status
     private let weatherService = WeatherService()
 
     var body: some View {
         VStack(spacing: 0) {
             GeometryReader { geometry in
                 VStack(spacing: 0) {
-                    // Header View at the top
                     HeaderView()
                         .frame(maxWidth: .infinity)
                         .background(Color(hex: "#00d1b2"))
-                        .padding(.top, geometry.safeAreaInsets.top) // Respect safe area insets on top
-                        .edgesIgnoringSafeArea([.top, .horizontal]) // Ensures no bottom padding influence, only edges at the top and horizontally
 
-                    // Directly below the header without any spacing
                     SearchBarView(
                         city: $city,
                         onSearch: fetchWeather,
-                        onFetchCurrentLocation: fetchCurrentLocationWeather // Added this closure
+                        onFetchCurrentLocation: handleCurrentLocation,
+                        errorMessage: errorMessage
                     )
+                    .padding(.top, 8)
 
-                    // Main content for displaying weather information
-                    if let weather = weather {
-                        VStack {
-                            Text("Weather in \(weather.name)")
-                                .font(.title)
-                                .padding()
-
-                            Text("Temperature: \(weather.main.temp, specifier: "%.1f")°C")
-                                .font(.largeTitle)
-                                .padding()
-                        }
-                        .padding(.horizontal)
+                    if isLoading {
+                        ProgressView("Loading...") // Show loading indicator
+                            .padding()
+                    } else if let weather = weather {
+                        WeatherInfoView(weather: weather)
+                    } else if let errorMessage = errorMessage {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .padding()
+                    } else {
+                        Text("Enter a city to see weather data.")
+                            .foregroundColor(.gray)
+                            .padding()
                     }
 
-                    Spacer() // Pushes remaining content down to fill available space
+                    Spacer()
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height)
+                .onAppear {
+                    fetchWeather()
+                }
             }
         }
+//        GoogleAdView()
+//            .frame(height: 50)
     }
 
+    // Fetch weather by city name
     private func fetchWeather() {
-        weatherService.fetchWeather(city: city) { response in
-            self.weather = response
-        }
-    }
+        errorMessage = nil // Clear previous errors
 
-    private func fetchCurrentLocationWeather() {
-        locationManager.requestLocation() // Request current location
-        if let location = locationManager.location {
-            let latitude = location.coordinate.latitude
-            let longitude = location.coordinate.longitude
-            weatherService.fetchWeatherByCoordinates(latitude: latitude, longitude: longitude) { response in
-                self.weather = response
+        // Use default city if input is empty or only contains whitespace
+        let queryCity = city.trimmingCharacters(in: .whitespaces).isEmpty ? "Ottawa" : city
+
+        weatherService.fetchWeather(city: queryCity) { response in
+            DispatchQueue.main.async {
+                if let weatherResponse = response {
+                    dump(weatherResponse) // This prints the entire object with its structure
+                } else {
+                    print("Failed to fetch weather data.")
+                }
+                if let response = response {
+                    self.weather = response
+                    
+                } else {
+                    self.errorMessage = "Invalid city name. Please try again."
+                }
             }
-        } else {
-            print("Location not available")
         }
     }
-}
 
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
+    // Handle fetching weather by current location
+    private func handleCurrentLocation() {
+        locationManager.requestLocation()
+    }
+
+    // Fetch weather by geographic coordinates
+    private func fetchWeatherByLocation(latitude: Double, longitude: Double) {
+        errorMessage = nil // Clear previous errors
+
+        weatherService.fetchWeatherByCoordinates(latitude: latitude, longitude: longitude) { response in
+            DispatchQueue.main.async {
+                if let response = response {
+                    self.weather = response
+                } else {
+                    self.errorMessage = "Failed to fetch weather data for the current location."
+                }
+            }
+        }
     }
 }

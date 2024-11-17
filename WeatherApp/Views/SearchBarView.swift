@@ -2,55 +2,98 @@
 //  SearchBarView.swift
 //  WeatherApp
 //
-//  Created by Haorong Li on 2024-11-16.
-//
 
 import SwiftUI
+import CoreLocation // Ensure this is imported for CLLocation and CLGeocoder
 
 struct SearchBarView: View {
     @Binding var city: String
     var onSearch: () -> Void
-    var onFetchCurrentLocation: () -> Void // New closure for fetching current location weather
+    var onFetchCurrentLocation: () -> Void
+    var errorMessage: String? // Optional error message to show in the placeholder
+    @ObservedObject private var locationManager = LocationManager() // Assuming you have a LocationManager
+    @State private var isRequestingLocation: Bool = false // Added state variable
 
     var body: some View {
-        HStack {
-            // Search TextField with rounded border
-            TextField("Enter city name", text: $city)
-                .padding(10)
-                .background(Color(.systemGray6)) // Light background for input
-                .cornerRadius(10)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.gray, lineWidth: 1) // Border for the TextField
-                )
-                .padding(.horizontal)
-
-            // Search Button (magnifying glass icon)
-            Button(action: onSearch) {
+        VStack(spacing: 10) {
+            // iOS-style search bar with TextField
+            HStack {
                 Image(systemName: "magnifyingglass")
+                    .foregroundColor(.gray)
+                    .padding(.leading, 8)
+                
+                TextField(errorMessage ?? "Search for a city...", text: $city)
                     .padding(10)
-                    .background(Color(hex: "#00d1b2"))
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
+                    .background(Color(.systemGray6)) // Light gray background for input
+                    .cornerRadius(10)
+                    .onSubmit {
+                        onSearch() // Trigger search action on pressing return
+                    }
+                
+                if !city.isEmpty {
+                    Button(action: {
+                        city = "" // Clear text action
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.gray)
+                    }
+                    .padding(.trailing, 8)
+                }
             }
-            .padding(.trailing, 8)
+            .padding(.horizontal)
+            .background(Color(.systemGray6))
+            .cornerRadius(10)
+            .padding(.horizontal)
 
-            // Button to get weather for the current location
-            Button(action: onFetchCurrentLocation) {
-                Image(systemName: "location.fill") // SF Symbol for location icon
-                    .padding(10)
-                    .background(Color(hex: "#00d1b2"))
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
+            // Buttons below the search bar
+            HStack {
+                Spacer() // Pushes buttons to the right
+                // Button to get weather for the current location
+                Button(action: {
+                    isRequestingLocation = true
+                    locationManager.requestLocation()
+                }) {
+                    Image(systemName: isRequestingLocation ? "location.circle" : "location.fill")
+                        .padding(10)
+                        .background(Color(hex: "#00d1b2"))
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                }
+                .disabled(isRequestingLocation)
+                Button(action: onSearch) {
+                    Image(systemName: "magnifyingglass")
+                        .padding(10)
+                        .background(Color(hex: "#00d1b2"))
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                }
             }
-            .padding(.trailing)
+            .padding(.horizontal)
         }
-    }
-}
+        .onChange(of: locationManager.location) { newLocation in
+            if let location = newLocation {
+                let geocoder = CLGeocoder()
+                geocoder.reverseGeocodeLocation(location) { placemarks, error in
+                    isRequestingLocation = false
 
-struct SearchBarView_Previews: PreviewProvider {
-    @State static var city = ""
-    static var previews: some View {
-        SearchBarView(city: $city, onSearch: {}, onFetchCurrentLocation: {})
+                    if let error = error {
+                        print("Geocoding error: \(error.localizedDescription)")
+                        return
+                    }
+
+                    if let placemark = placemarks?.first,
+                       let cityName = placemark.locality {
+                        city = cityName
+                        onSearch()
+                    }
+                }
+            }
+        }
+        .onChange(of: locationManager.errorMessage) { error in
+            if let error = error {
+                isRequestingLocation = false
+                print("Location error: \(error)")
+            }
+        }
     }
 }
