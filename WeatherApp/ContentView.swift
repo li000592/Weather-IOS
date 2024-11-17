@@ -43,12 +43,19 @@ struct ContentView: View {
                             .foregroundColor(.gray)
                             .padding()
                     }
-
-                    Spacer()
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height)
                 .onAppear {
                     fetchWeather()
+                    let weatherService = WeatherService()
+                    weatherService.fetchHourlyWeather(city: "London") { response in
+                        if let response = response {
+                            // Handle hourly weather data
+                            print(response)
+                        } else {
+                            print("Failed to fetch hourly weather data.")
+                        }
+                    }
                 }
             }
         }
@@ -62,7 +69,7 @@ struct ContentView: View {
 
         // Use default city if input is empty or only contains whitespace
         let queryCity = city.trimmingCharacters(in: .whitespaces).isEmpty ? "Ottawa" : city
-
+        
         weatherService.fetchWeather(city: queryCity) { response in
             DispatchQueue.main.async {
                 if let weatherResponse = response {

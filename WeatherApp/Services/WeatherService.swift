@@ -36,6 +36,17 @@ class WeatherService {
         performRequest(with: url, completion: completion)
     }
 
+    func fetchHourlyWeather(city: String, completion: @escaping (HourlyWeatherResponse?) -> Void) {
+        let encodedCity = city.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? city
+        let urlString = "https://api.openweathermap.org/data/2.5/forecast?q=\(encodedCity)&appid=\(apiKey)&units=metric"
+        guard let url = URL(string: urlString) else {
+            completion(nil)
+            return
+        }
+
+        performHourlyRequest(with: url, completion: completion)
+    }
+
     private func performRequest(with url: URL, completion: @escaping (WeatherResponse?) -> Void) {
         let task = URLSession.shared.dataTask(with: url) { data, response, error in
             if let error = error {
@@ -69,6 +80,47 @@ class WeatherService {
                 }
             } catch {
                 print("Error decoding data: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion(nil)
+                }
+            }
+        }
+        task.resume()
+    }
+
+    private func performHourlyRequest(with url: URL, completion: @escaping (HourlyWeatherResponse?) -> Void) {
+        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+            if let error = error {
+                print("Error fetching hourly data: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion(nil)
+                }
+                return
+            }
+
+            if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
+                print("Error: HTTP status code \(httpResponse.statusCode)")
+                DispatchQueue.main.async {
+                    completion(nil)
+                }
+                return
+            }
+
+            guard let data = data else {
+                print("Error: No data received")
+                DispatchQueue.main.async {
+                    completion(nil)
+                }
+                return
+            }
+
+            do {
+                let hourlyResponse = try JSONDecoder().decode(HourlyWeatherResponse.self, from: data)
+                DispatchQueue.main.async {
+                    completion(hourlyResponse)
+                }
+            } catch {
+                print("Error decoding hourly data: \(error.localizedDescription)")
                 DispatchQueue.main.async {
                     completion(nil)
                 }

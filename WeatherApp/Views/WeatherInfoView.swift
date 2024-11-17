@@ -7,7 +7,7 @@ import SwiftUI
 
 struct WeatherInfoView: View {
     let weather: WeatherResponse?
-
+    @State private var selectedView: Int = 0 // 0 for current weather, 1 for hourly weather
     var body: some View {
         VStack(spacing: 10) {
             if let weather = weather {
@@ -49,68 +49,23 @@ struct WeatherInfoView: View {
                             .font(.subheadline)
                     }
                 }
-                // Last time update section with right alignment
-                if let timestamp = weather.dt {
-                    HStack {
-                        Spacer()
-                        Text("Last Time Update: \(formatTime(from: timestamp))")
-                            .font(.footnote)
-                            .foregroundColor(.gray)
-                    }
-                }
-                Divider()
-                    .padding(.vertical, 10)
 
-                // List for additional weather information with right-aligned values
-                List {
-                    HStack {
-                        Text("Sunrise:")
-                        Spacer()
-                        if let sunrise = weather.sys?.sunrise {
-                            Text(formatTime(from: sunrise))
-                        } else {
-                            Text("N/A")
-                        }
-                    }
-                    HStack {
-                        Text("Sunset:")
-                        Spacer()
-                        if let sunset = weather.sys?.sunset {
-                            Text(formatTime(from: sunset))
-                        } else {
-                            Text("N/A")
-                        }
-                    }
-                    HStack {
-                        Text("Min Temp:")
-                        Spacer()
-                        Text("\(weather.main.temp_min, specifier: "%.1f")°C")
-                    }
-                    HStack {
-                        Text("Max Temp:")
-                        Spacer()
-                        Text("\(weather.main.temp_max, specifier: "%.1f")°C")
-                    }
-                    HStack {
-                        Text("Pressure:")
-                        Spacer()
-                        Text("\(weather.main.pressure) hPa")
-                    }
-                    HStack {
-                        Text("Humidity:")
-                        Spacer()
-                        Text("\(weather.main.humidity)%")
-                    }
-                    if let visibility = weather.visibility {
-                        HStack {
-                            Text("Visibility:")
-                            Spacer()
-                            Text("\(visibility / 1000) km")
-                        }
-                    }
+                // Divider
+//                Divider()
+//                    .padding(.vertical, 10)
+
+                // Weather Details View
+                Picker("Select View", selection: $selectedView) {
+                    Text("Current Weather").tag(0)
+                    Text("Hourly Weather").tag(1)
                 }
-                .listStyle(PlainListStyle())
-                .frame(maxHeight: .infinity)
+                .pickerStyle(SegmentedPickerStyle())
+
+                if selectedView == 0 {
+                    WeatherDetailsView(weather: weather)
+                } else if selectedView == 1 {
+                    HourlyWeatherView(city: weather.name)
+                }
             } else {
                 // Placeholder view when no data is available
                 VStack {
@@ -129,17 +84,8 @@ struct WeatherInfoView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-
             Spacer()
         }
         .padding()
-    }
-
-    private func formatTime(from timestamp: Int) -> String {
-        let date = Date(timeIntervalSince1970: TimeInterval(timestamp))
-        let dateFormatter = DateFormatter()
-        dateFormatter.timeStyle = .short
-        dateFormatter.dateStyle = .none
-        return dateFormatter.string(from: date)
     }
 }
