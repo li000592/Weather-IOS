@@ -21,7 +21,7 @@ A modern iOS weather application that provides real-time weather information wit
 
 1. Clone the repository:
 bash
-git clone https://github.com/yourusername/WeatherApp.git
+git clone https://github.com/li000592/Weather-ios.git
 
 2. Configure API keys:
    - Rename `Secrets.example.plist` to `Secrets.plist`
